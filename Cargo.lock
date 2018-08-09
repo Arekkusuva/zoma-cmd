@@ -416,7 +416,9 @@ dependencies = [
 name = "provider"
 version = "0.1.0"
 dependencies = [
+ "futures 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "telegram-bot 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -862,10 +864,6 @@ dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "zoma-cmd"
-version = "0.1.0"
 
 [metadata]
 "checksum antidote 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "34fde25430d87a9388dadbe6e34d7f72a462c8b43ac8d309b42b0a8505d7e2a5"
