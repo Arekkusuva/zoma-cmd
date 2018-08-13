@@ -3,15 +3,20 @@ use std::sync::{Arc, mpsc, Mutex};
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    tx: mpsc::Sender<Job>,
+    tx: mpsc::Sender<Message>,
+}
+
+enum Message {
+    NewJob(Job),
+    Terminate,
 }
 
 trait FnBox {
-    fn call(self: Box<Self>);
+    fn call_box(self: Box<Self>);
 }
 
 impl<F: FnOnce()> FnBox for F {
-    fn call(self: Box<F>) {
+    fn call_box(self: Box<F>) {
         (*self)()
     }
 }
@@ -46,30 +51,51 @@ impl ThreadPool {
 
     pub fn execute<F: FnOnce() + Send + 'static>(&self, f: F) {
         let job = Box::new(f);
-        self.tx.send(job).unwrap();
+        self.tx.send(Message::NewJob(job)).unwrap();
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        for _ in &mut self.workers {
+            self.tx.send(Message::Terminate).unwrap();
+        }
+
+        for worker in &mut self.workers {
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
 
 pub struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
-    fn new(id: usize, rx: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+    fn new(id: usize, rx: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || {
             loop {
-                let job = rx.lock().unwrap().recv().unwrap();
+                let message = rx.lock().unwrap().recv().unwrap();
 
-                println!("worker {} got a job", id);
-
-                job.call();
+                match message {
+                    Message::NewJob(job) => {
+                        println!("worker {} got a job", id);
+                        job.call_box();
+                    },
+                    Message::Terminate => {
+                        println!("worker {} terminate.", id);
+                        break;
+                    },
+                }
             }
         });
 
         Worker {
             id,
-            thread,
+            thread: Some(thread),
         }
     }
 }
